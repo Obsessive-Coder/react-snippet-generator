@@ -1,24 +1,12 @@
 import * as vscode from 'vscode';
 
+import { IComponentData, IOpenOptions, ISnippet } from './interfaces';
 import { HELPERS } from './utils';
 
 const {
 	getDirectoryFilePaths, getFilesData, getSnippets,
+	writeSnippetsFile,
 } = HELPERS;
-
-// TODO: Put interfaces in external file.
-// Interfaces.
-interface IOpenOptions {
-	canSelectFiles: boolean;
-	canSelectFolders: boolean;
-};
-
-interface IComponentData {
-	description: string;
-	displayName: string;
-	methods: Array<any>;
-	props: Object;
-};
 
 // This method is called when your extension is activated.
 export function activate(context: vscode.ExtensionContext) {
@@ -42,10 +30,17 @@ export function activate(context: vscode.ExtensionContext) {
 				// Get the component data;
 				const componentsData: Array<IComponentData> = getFilesData(filePaths);
 
-				// Generate empty snippets.
-				const emptySnippets: Array<string> = getSnippets(componentsData, 'empty');
+				// Generate snippets.
+				const emptySnippetsData: { [x: string]: ISnippet } = getSnippets(componentsData, 'empty');
+				const requiredSnippetsData: { [x: string]: ISnippet } = getSnippets(componentsData, 'required');
+				const propsSnippetsData: { [x: string]: ISnippet } = getSnippets(componentsData, 'props');
+				const snippetsData = {
+					...emptySnippetsData, ...requiredSnippetsData, ...propsSnippetsData,
+				};
 
-				console.log(...emptySnippets);
+				// Write the component snippets to the .vscode folder.
+				const { workspaceFolders = []} = vscode.workspace;
+				writeSnippetsFile(snippetsData, workspaceFolders[0]);
 			});
 	});
 

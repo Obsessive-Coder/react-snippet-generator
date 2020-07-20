@@ -1,16 +1,10 @@
 import fs = require('fs');
 import path = require('path');
+import { IComponentData, ISnippet } from '../interfaces';
 
+const mkdirp = require('mkdirp');
 const reactDocs = require('react-docgen');
 
-// TODO: Put interfaces in external file.
-// Interfaces.
-interface IComponentData {
-	description: string;
-	displayName: string;
-	methods: Array<any>;
-	props: Object;
-};
 
 // Constants.
 import {
@@ -20,6 +14,7 @@ import {
   PROPTYPES_IMPORT_REGEX,
   READ_ERROR_MESSAGE,
 } from './constants';
+import { Interface } from 'readline';
 
 const HELPERS = {
   getDirectoryFilePaths: (directoryPath: string, allFilePaths: string[] = []): string[] => {
@@ -80,30 +75,67 @@ const HELPERS = {
       const isPropTypesImported: boolean = PROPTYPES_IMPORT_REGEX.test(fileContent);
 
       let componentData: IComponentData|undefined;
-      if (isReactImported && isPropTypesImported) {
-        try {
+      try {
+        if (isReactImported && isPropTypesImported) {
           componentData = reactDocs.parse(fileContent);
-        } catch (err) {
-          console.log('ERROR: File is not a React component --- ', err);
         }
-      }
-      return componentData;
+      } finally { return componentData; }
     });
 
     return <Array<IComponentData>> reactFileContents.filter(content => content);
   },
-  getSnippets: (componentsData: Array<IComponentData>, snippetType: string): Array<string> => {
-    return componentsData.map(({
-      description, displayName, props,
-    }: IComponentData) => {
-      return JSON.stringify({
-        [`${displayName}-${snippetType}`]: {
-          description,
-          prefix: `${displayName.charAt(0).toLocaleLowerCase()}${displayName.substring(1)}-${snippetType}`,
-          body: `<${displayName}>$0</${displayName}>`
-        }
-      }, null, 2);
-    });
+  getSnippets: (componentsData: Array<IComponentData>, snippetType: string): { [x: string]: ISnippet } => {
+    return componentsData.reduce(
+      (acc, { displayName, description, props = {} }) => {
+
+        const propNames: Array<string> = snippetType === 'empty' ? [] : (
+          Object.keys(props).filter(name => (
+            snippetType === 'required' ? props[name].required : true
+          ))
+        );
+
+        const snippetSuffix: string = propNames.length ? snippetType : 'empty';
+        const snippetName: string = `${displayName}-${snippetSuffix}`;
+        return ({
+          ...acc,
+          [snippetName]: {
+            description,
+            prefix: `${snippetName.charAt(0).toLocaleLowerCase()}${snippetName.substring(1)}`,
+            // body: `<${displayName}>$0</${displayName}>`
+            body: ((): string|string[] => {
+              // If snippet type is empty or there are nor props.
+              if (!propNames.length || !props) {
+                return `<${displayName}>$0</${displayName}>`;
+              }
+
+              let bodyLines: string[] = [
+                `<${displayName}`
+              ];
+
+              bodyLines = bodyLines.concat(propNames.map((name: string, index): string => (
+                `\t${name}="${'${' + (index + 1) + ':[' + props[name]?.type?.name + '' + ']}'}"`
+              )));
+
+              bodyLines.push(`>`, '\t${0:[data]}', `</${displayName}>`);
+
+              return bodyLines;
+            })(),
+          }
+        });
+      }, {});
+  },
+  writeSnippetsFile: (snippetsData: { [x: string]: ISnippet }, workspaceFolders: any) => {
+    mkdirp(path.join(workspaceFolders.uri.fsPath, '.vscode', 'snippets'))
+      .then(() => {
+        const savePath = path.join(
+          workspaceFolders.uri.fsPath, '.vscode', 'libraryName.code-snippets'
+        );
+
+        fs.writeFile(savePath, JSON.stringify(snippetsData, null, 2), err => {
+            if (err) { throw err; }
+            console.log('The file has been saved!');
+        });
+      });
   },
 };
 
