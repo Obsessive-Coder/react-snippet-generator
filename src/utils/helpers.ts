@@ -1,10 +1,12 @@
-import fs = require('fs');
 import path = require('path');
-import { IComponentData, ISnippet } from '../interfaces';
+import {
+  IComponentData, IDirectoryItem, IPromiseData,
+  ISnippetFile,
+} from './interfaces';
 
+const { promises: fs } = require('fs');
 const mkdirp = require('mkdirp');
 const reactDocs = require('react-docgen');
-
 
 // Constants.
 import {
@@ -12,110 +14,119 @@ import {
   FILE_PATH_REGEX,
   REACT_IMPORT_REGEX,
   PROPTYPES_IMPORT_REGEX,
-  READ_ERROR_MESSAGE,
+  GENERATE_SUCCESS_MESSAGE,
+  GENERATE_ERROR_MESSAGE,
 } from './constants';
-import { Interface } from 'readline';
 
 const HELPERS = {
-  getDirectoryFilePaths: (directoryPath: string, allFilePaths: string[] = []): string[] => {
-    /* NOTE: This method is a result of the following article:
-      https://coderrocketfuel.com/article/recursively-list-all-the-files-in-a-directory-using-node-js
+  getComponentFileNames: async (directoryPath: string) => {
+    /**
+     * This method recursively reads a directory and subdirectory,
+     * and returns and array of file paths that might be React components.
+     *
+     * NOTE: It is a result of the following article:
+     * https://dev.to/leonard/get-files-recursive-with-the-node-js-file-system-fs-2n7o
     */
 
-    // Format the string for consistency.
-    const formattedPath: string = HELPERS.formatFilePath(directoryPath);
+    // Format the directory path for consistency.
+    const formattedPath: string = formatFilePath(directoryPath);
 
-    // Get and filter file and folder paths.
-    const fileFolderNames: string[] = fs.readdirSync(formattedPath);
-    const filteredNames: string[] = HELPERS.filterFileFolderNames(fileFolderNames);
+    // Read the directory.
+    const directoryItems: Array<IDirectoryItem> = await
+      fs.readdir(formattedPath, { withFileTypes: true });
 
-    // Iterate each filtered file and folder path in the directory.
-    for (let i: number = 0; i < filteredNames.length; i++) {
-      // const filePath: string = path.join(formattedPath, filteredPaths[i]);
-      const filePath: string = `${formattedPath}\\${filteredNames[i]}`;
-      const isDirectory: boolean = fs.statSync(filePath).isDirectory();
-      const isReactComponent = !isDirectory && HELPERS.isFileReactComponent(filePath);
+    // Separate directories and files.
+    const directories: Array<IDirectoryItem> = directoryItems.filter(
+      (item: IDirectoryItem): boolean => item.isDirectory());
 
-      /**
-       * If the file path is a directory...
-       *  - Recursively call this function for all subdirectories.
-       * Else if the file is a React component...
-       *  - Add the file to the array of files.
-      */
-      if (isDirectory) {
-        allFilePaths = HELPERS.getDirectoryFilePaths(filePath, allFilePaths);
-      } else if (isReactComponent) {
-        allFilePaths.push(filePath);
-      }
+    const files: Array<string> = directoryItems.filter(
+      (item: IDirectoryItem): boolean => (
+        !item.isDirectory() && isFilenameComponent(item.name))
+      ).map(({ name }: IDirectoryItem): string => `${formattedPath}/${name}`);
+
+    // Recursively call this function and add the files to the files array.
+    for (let directory of directories) {
+      files.push(...await HELPERS.getComponentFileNames(
+        `${directoryPath}/${directory.name}`));
     }
 
-    return allFilePaths;
+    return files;
   },
-  formatFilePath: (filePath: string): string => {
-    const folderNames : string[] = filePath.split(RegExp(FILE_PATH_REGEX));
-    return path.join(...folderNames);
-  },
-  filterFileFolderNames: (fileFolderPaths: string[]): string[] => {
-    return fileFolderPaths.filter(p => (
-      !p.toLowerCase().includes('test') && !p.includes('.d.')
-    ));
-  },
-  isFileReactComponent: (filePath: string): boolean => {
-    const splitPath: string[] = filePath.split('\\');
-    const filename: string = splitPath[splitPath.length - 1];
-    // Test filename against regex for react component name.
-    return RegExp(COMPONENT_NAME_REGEX).test(filename);
-  },
-  getFilesData: (filePaths: string[]): Array<IComponentData> => {
-    const reactFileContents: Array<IComponentData|undefined> = filePaths.map((filePath: string) => {
-      const fileContent: string = fs.readFileSync(filePath, 'UTF-8');
+  getComponentsData: async (componentPaths: string[], handleTooManyFilesError: () => void): Promise<Array<IComponentData>> => {
+    /**
+     * Try to get the components' data using react-docgen.
+     * Undefined values indicate the file is not a React
+     * component, or react-docgen threw an error. The undefined
+     * items are filtered out before returning the final array.
+    */
 
-      // Filter for content to ensure it is a React component.
-      const isReactImported: boolean = REACT_IMPORT_REGEX.test(fileContent);
-      const isPropTypesImported: boolean = PROPTYPES_IMPORT_REGEX.test(fileContent);
+    // Build an array of file contents, or undefined.
+    const componentFileContents: Array<IComponentData|undefined> = await Promise.all(
+      (componentPaths.map(async (
+        filePath: string): Promise<IComponentData|undefined> => {
+          // Read the contents of the file.
+          const fileContent: string = await
+            fs.readFile(filePath, 'UTF-8')
+              .catch(handleTooManyFilesError);
 
-      let componentData: IComponentData|undefined;
-      try {
-        if (isReactImported && isPropTypesImported) {
-          componentData = reactDocs.parse(fileContent);
+          // Try to get the component data.
+          let componentData: IComponentData|undefined;
+          try {
+            componentData = reactDocs.parse(fileContent);
+          } finally { return componentData; }
         }
-      } finally { return componentData; }
-    });
+      )
+    ));
 
-    return <Array<IComponentData>> reactFileContents.filter(content => content);
+    // Return the items that have component data (React components).
+    return <Array<IComponentData>> componentFileContents.filter(
+      (content: IComponentData|undefined) => (
+        content?.displayName && content?.props
+      )
+    );
   },
-  getSnippets: (componentsData: Array<IComponentData>, snippetType: string): { [x: string]: ISnippet } => {
+  getSnippets: (
+    componentsData: Array<IComponentData>, snippetType: string
+  ): ISnippetFile => {
+    /**
+     * This method takes the data produced by react-docgen, and
+     * converts it into VS Code snippets format.
+    */
     return componentsData.reduce(
-      (acc, { displayName, description, props = {} }) => {
-
+      (acc, { displayName, description, props = {} }: IComponentData) => {
+        // Get a list of props for this component based on the type of snippet.
         const propNames: Array<string> = snippetType === 'empty' ? [] : (
-          Object.keys(props).filter(name => (
-            snippetType === 'required' ? props[name].required : true
+          Object.keys(props).filter((name: string): boolean => (
+            snippetType === 'required' && props[name].required
           ))
         );
 
+        // The snippet name is the component name with the snippet type appended.
         const snippetSuffix: string = propNames.length ? snippetType : 'empty';
         const snippetName: string = `${displayName}-${snippetSuffix}`;
+
         return ({
           ...acc,
           [snippetName]: {
             description,
-            prefix: `${snippetName.charAt(0).toLocaleLowerCase()}${snippetName.substring(1)}`,
-            // body: `<${displayName}>$0</${displayName}>`
+            prefix: `${snippetName.charAt(0).toLowerCase()}${snippetName.substring(1)}`,
             body: ((): string|string[] => {
-              // If snippet type is empty or there are nor props.
+              // If snippet type is empty or there are no props.
               if (!propNames.length || !props) {
                 return `<${displayName}>$0</${displayName}>`;
               }
 
+              // The opening tag for the component.
               let bodyLines: string[] = [
                 `<${displayName}`
               ];
 
+              // Add each prop and type to the snippet.
               bodyLines = bodyLines.concat(propNames.map((name: string, index): string => (
                 `\t${name}="${'${' + (index + 1) + ':[' + props[name]?.type?.name + '' + ']}'}"`
               )));
 
+              // Close the opening tag and add the closing tag to the snippet.
               bodyLines.push(`>`, '\t${0:[data]}', `</${displayName}>`);
 
               return bodyLines;
@@ -124,19 +135,52 @@ const HELPERS = {
         });
       }, {});
   },
-  writeSnippetsFile: (snippetsData: { [x: string]: ISnippet }, workspaceFolders: any) => {
-    mkdirp(path.join(workspaceFolders.uri.fsPath, '.vscode', 'snippets'))
-      .then(() => {
-        const savePath = path.join(
-          workspaceFolders.uri.fsPath, '.vscode', 'libraryName.code-snippets'
-        );
+  writeSnippetsFile: async (
+    snippetsData: ISnippetFile, projectPath: string, libraryName: string
+  ): Promise<IPromiseData> => {
+    // TODO: Return a promise from here so a message can be shown to the user.
+    // Writes a VS Code snippets file to the user's project directory.
+    return new Promise(async resolve => {
+      // Save path: "project-directory/.vscode/filename.code-snippets".
+      const snippetsPath: string = path.join(projectPath, '.vscode');
+      const fullPath: string = path.join(snippetsPath, `${libraryName}.code-snippets`);
 
-        fs.writeFile(savePath, JSON.stringify(snippetsData, null, 2), err => {
-            if (err) { throw err; }
-            console.log('The file has been saved!');
-        });
+      // Format and convert the data to a JSON string.
+      const snippetsJSON: string = JSON.stringify(snippetsData, null, 2);
+
+      // Create the folder if it does not exist and write the file.
+      await mkdirp(snippetsPath);
+      const writeResult: any = await fs.writeFile(fullPath, snippetsJSON);
+
+      resolve({
+        message: writeResult ? GENERATE_ERROR_MESSAGE : GENERATE_SUCCESS_MESSAGE,
+        error: writeResult,
       });
+    });
   },
 };
+
+function formatFilePath(filePath: string): string {
+  // Formats the file path to match a specific pattern.
+  const folderNames: string[] = filePath.split(FILE_PATH_REGEX);
+  return path.join(...folderNames);
+}
+
+function isFilenameComponent(filePath: string): boolean {
+  // Determines if the name of a file matches React naming conventions.
+  const splitPath: string[] = filePath.split('\\');
+  const filename: string = splitPath[splitPath.length - 1];
+  return COMPONENT_NAME_REGEX.test(filename);
+}
+
+function isFileContentComponent(fileContent: string): boolean {
+  // TODO: Apply more accurate regex patterns.
+  // TODO: Consider removing since invalid files are ignored.
+  // Determines if a file is a React component.
+  const isReactImported: boolean = REACT_IMPORT_REGEX.test(fileContent);
+  const isPropTypesImported: boolean = PROPTYPES_IMPORT_REGEX.test(fileContent);
+
+  return isReactImported && isPropTypesImported;
+}
 
 export default HELPERS;

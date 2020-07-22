@@ -1,51 +1,124 @@
 import * as vscode from 'vscode';
 
-import { IComponentData, IOpenOptions, ISnippet } from './interfaces';
-import { HELPERS } from './utils';
+import {
+	IComponentData, ISnippetFile, IPromiseData,
+} from './utils/interfaces';
+import { CONSTANTS, HELPERS } from './utils';
 
 const {
-	getDirectoryFilePaths, getFilesData, getSnippets,
+	DEFAULT_OPEN_OPTIONS, DEFAULT_PROGRESS_REPORT,
+	TOO_MANY_FILES_ERROR_MESSAGE, NO_COMPONENTS_ERROR_MESSAGE,
+	PROGRESS_OPTIONS_DATA, SNIPPET_TYPES,
+} = CONSTANTS;
+
+const {
+	getComponentsData, getComponentFileNames, getSnippets,
 	writeSnippetsFile,
 } = HELPERS;
 
-// This method is called when your extension is activated.
 export function activate(context: vscode.ExtensionContext) {
-	// The command has been defined in the package.json file.
-	// The commandId parameter must match the command field in package.json.
-	let disposable = vscode.commands.registerCommand('react-snippet-generator.generateComponentSnippets', () => {
-		const openOptions: IOpenOptions = {
-			canSelectFiles: false,
-			canSelectFolders: true,
-		};
+	// Handler for generate snippets command.
+	const disposable = vscode.commands.registerCommand(
+		'react-snippet-generator.generateComponentSnippets', () => {
+			/**
+			 * This function handles the Generate Component Snippets command.
+			 * After the user selects a folder where their component library
+			 * is installed, this extension will attempt to find all files that
+			 * are React components. Then react-docgen is used to parse information
+			 * about the component. Finally, this data is converted to VS Code snippets
+			 * format and saved to the user's snippet library.
+			*/
 
-		vscode.window.showOpenDialog(openOptions)
-			.then((selectedFolderPaths: vscode.Uri[] | undefined) => {
-				// No folder selected or empty array.
-				if (!selectedFolderPaths || !selectedFolderPaths.length) { return; }
+			vscode.window.showInputBox()
+				.then((libraryName: string|undefined = '') => {
+					if (!libraryName) { return; }
 
-				// Get the file paths for all React components.
-				const { path: selectedPath }: { path: string } = selectedFolderPaths[0];
-				const filePaths: string[] = getDirectoryFilePaths(selectedPath);
+					// Show open folder dialog.
+					vscode.window.showOpenDialog(DEFAULT_OPEN_OPTIONS)
+						.then((selectedFolderPaths: vscode.Uri[] | undefined) => {
+							// Return if no folder is selected or it's an empty array.
+							if (!selectedFolderPaths || !selectedFolderPaths.length) { return; }
 
-				// Get the component data;
-				const componentsData: Array<IComponentData> = getFilesData(filePaths);
+							// Store the number of components found.
+							let componentTotal: number = 0;
 
-				// Generate snippets.
-				const emptySnippetsData: { [x: string]: ISnippet } = getSnippets(componentsData, 'empty');
-				const requiredSnippetsData: { [x: string]: ISnippet } = getSnippets(componentsData, 'required');
-				const propsSnippetsData: { [x: string]: ISnippet } = getSnippets(componentsData, 'props');
-				const snippetsData = {
-					...emptySnippetsData, ...requiredSnippetsData, ...propsSnippetsData,
-				};
+							vscode.window.withProgress(
+								PROGRESS_OPTIONS_DATA, (progress, token) => {
+									// When cancel button is clicked.
+									token.onCancellationRequested(() => {
+										// TODO: Handle cancelling.
+										console.log('User canceled the long running operation');
+									});
 
-				// Write the component snippets to the .vscode folder.
-				const { workspaceFolders = []} = vscode.workspace;
-				writeSnippetsFile(snippetsData, workspaceFolders[0]);
-			});
-	});
+									// Start the progress.
+									progress.report(DEFAULT_PROGRESS_REPORT);
+
+									return new Promise(async resolve => {
+										// Get the file paths for all React components.
+										const { path: selectedPath }: { path: string } = selectedFolderPaths[0];
+										const componentFilePaths: string[] = await
+											getComponentFileNames(selectedPath);
+
+										// Get the component data from the files.
+										progress.report({
+											...DEFAULT_PROGRESS_REPORT,
+											message: 'Parsing Data',
+										});
+										const componentsData: Array<IComponentData> = await
+											getComponentsData(componentFilePaths, () => {
+												// Handles the bug where too many files are open.
+												// TODO: Fix the bug in getComponentsData.
+												resolve({
+													error: true,
+													message: TOO_MANY_FILES_ERROR_MESSAGE,
+												});
+											});
+
+										// Store the number of components to be displayed later.
+										componentTotal = componentsData.length;
+
+										// Return if there are no components.
+										if (componentTotal <= 0) {
+											return resolve({
+												error: true,
+												message: NO_COMPONENTS_ERROR_MESSAGE,
+											});
+										}
+
+										// Generate snippets.
+										progress.report({
+											...DEFAULT_PROGRESS_REPORT,
+											message: 'Creating Snippets',
+										});
+										const snippetsData: ISnippetFile = SNIPPET_TYPES.reduce((acc, current) => ({
+											...acc,
+											...getSnippets(componentsData, current)
+										}), {});
+
+										// Write the component snippets to the .vscode folder.
+										progress.report({
+											...DEFAULT_PROGRESS_REPORT,
+											message: 'Writing Snippets File',
+										});
+										const { workspaceFolders = [] } = vscode.workspace;
+										const snippetsFileData: IPromiseData = await writeSnippetsFile(
+											snippetsData, workspaceFolders[0].uri.fsPath, libraryName);
+
+										resolve(snippetsFileData);
+									});
+								}
+							).then((result: any) => {
+								// Show an error or info message based on the result.
+								const { error, message } = result;
+								const { showInformationMessage, showErrorMessage} = vscode.window;
+								const showMessage = error ? showErrorMessage : showInformationMessage;
+								showMessage(error ? message : `${message} ${componentTotal} components.`);
+							});
+						});
+				});
+		});
 
 	context.subscriptions.push(disposable);
-}
+};
 
-// this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { };

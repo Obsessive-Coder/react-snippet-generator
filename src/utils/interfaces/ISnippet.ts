@@ -1,5 +1,5 @@
 export default interface ISnippet {
-  [x: string]: {
+  [index: string]: {
     description: string,
     prefix: string,
     body: string|Array<string>

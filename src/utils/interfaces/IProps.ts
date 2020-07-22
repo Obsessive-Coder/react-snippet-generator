@@ -1,5 +1,8 @@
 export default interface IProps {
-  [x: string]: {
+  [index: string]: {
     required: boolean,
+    type: {
+      name: string,
+    },
   };
 };
