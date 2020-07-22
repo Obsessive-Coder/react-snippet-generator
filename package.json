@@ -1,5 +1,6 @@
 {
 	"name": "react-snippet-generator",
+	"publisher": "ObsessiveCoder",
 	"displayName": "React Snippet Generator",
 	"description": "Select an installed React component library and VS Code snippets will be generated.",
 	"version": "0.0.1",
