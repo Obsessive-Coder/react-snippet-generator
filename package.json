@@ -3,7 +3,8 @@
 	"publisher": "ObsessiveCoder",
 	"displayName": "React Snippet Generator",
 	"description": "Select an installed React component library and VS Code snippets will be generated.",
-	"version": "0.0.2",
+	"version": "0.0.3",
+	"icon": "reactIcon.png",
 	"repository": {
 		"type" : "git",
 		"url" : "https://github.com/Obsessive-Coder/react-snippet-generator"
