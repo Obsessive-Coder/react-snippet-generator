@@ -13,13 +13,14 @@ const GENERATE_SUCCESS_MESSAGE: string = 'Successfully generated snippets for';
 const GENERATE_ERROR_MESSAGE: string = `${GENERAL_ERROR_MESSAGE} generate the snippets file.`;
 const TOO_MANY_FILES_ERROR_MESSAGE: string = 'Too many files. Please select another directory.';
 const NO_COMPONENTS_ERROR_MESSAGE: string = 'React Snippet Generator: No components found.';
+const CANCELLED_SNIPPET_GENERATION: string = 'The snippet generator was cancelled.';
 
 // Collections.
 const SNIPPET_TYPES: Array<string> = ['empty', 'required', 'props'];
 const DEFAULT_OPEN_OPTIONS: OpenDialogOptions = {
   canSelectFiles: false,
   canSelectFolders: true,
-  canSelectMany: false,
+  canSelectMany: true,
 };
 const PROGRESS_OPTIONS_DATA: ProgressOptions = {
   location: ProgressLocation.Notification,
@@ -40,6 +41,7 @@ export {
   GENERATE_ERROR_MESSAGE,
   TOO_MANY_FILES_ERROR_MESSAGE,
   NO_COMPONENTS_ERROR_MESSAGE,
+  CANCELLED_SNIPPET_GENERATION,
   SNIPPET_TYPES,
   DEFAULT_OPEN_OPTIONS,
   PROGRESS_OPTIONS_DATA,
@@ -55,6 +57,7 @@ export default {
   GENERATE_ERROR_MESSAGE,
   TOO_MANY_FILES_ERROR_MESSAGE,
   NO_COMPONENTS_ERROR_MESSAGE,
+  CANCELLED_SNIPPET_GENERATION,
   SNIPPET_TYPES,
   DEFAULT_OPEN_OPTIONS,
   PROGRESS_OPTIONS_DATA,

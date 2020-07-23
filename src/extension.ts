@@ -8,7 +8,8 @@ import { CONSTANTS, HELPERS } from './utils';
 const {
 	DEFAULT_OPEN_OPTIONS, DEFAULT_PROGRESS_REPORT,
 	TOO_MANY_FILES_ERROR_MESSAGE, NO_COMPONENTS_ERROR_MESSAGE,
-	PROGRESS_OPTIONS_DATA, SNIPPET_TYPES,
+	CANCELLED_SNIPPET_GENERATION, PROGRESS_OPTIONS_DATA,
+	SNIPPET_TYPES,
 } = CONSTANTS;
 
 const {
@@ -44,20 +45,25 @@ export function activate(context: vscode.ExtensionContext) {
 
 							vscode.window.withProgress(
 								PROGRESS_OPTIONS_DATA, (progress, token) => {
-									// When cancel button is clicked.
-									token.onCancellationRequested(() => {
-										// TODO: Handle cancelling.
-										console.log('User canceled the long running operation');
-									});
-
 									// Start the progress.
 									progress.report(DEFAULT_PROGRESS_REPORT);
 
 									return new Promise(async resolve => {
 										// Get the file paths for all React components.
-										const { path: selectedPath }: { path: string } = selectedFolderPaths[0];
-										const componentFilePaths: string[] = await
-											getComponentFileNames(selectedPath);
+										const componentFilePaths: string[] = [];
+										for (let i = 0; i < selectedFolderPaths.length; i++) {
+											const { path: selectedPath }: vscode.Uri = selectedFolderPaths[i];
+											componentFilePaths.push(
+												...await getComponentFileNames(selectedPath));
+										}
+
+										// Stop if the user cancelled.
+										if (token.isCancellationRequested) {
+											return resolve({
+												error: true,
+												message: CANCELLED_SNIPPET_GENERATION,
+											});
+										}
 
 										// Get the component data from the files.
 										progress.report({
@@ -73,6 +79,14 @@ export function activate(context: vscode.ExtensionContext) {
 													message: TOO_MANY_FILES_ERROR_MESSAGE,
 												});
 											});
+
+										// Stop if the user cancelled.
+										if (token.isCancellationRequested) {
+											return resolve({
+												error: true,
+												message: CANCELLED_SNIPPET_GENERATION,
+											});
+										}
 
 										// Store the number of components to be displayed later.
 										componentTotal = componentsData.length;
@@ -94,6 +108,14 @@ export function activate(context: vscode.ExtensionContext) {
 											...acc,
 											...getSnippets(componentsData, current)
 										}), {});
+
+										// Stop if the user cancelled.
+										if (token.isCancellationRequested) {
+											return resolve({
+												error: true,
+												message: CANCELLED_SNIPPET_GENERATION,
+											});
+										}
 
 										// Write the component snippets to the .vscode folder.
 										progress.report({
