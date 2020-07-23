@@ -12,7 +12,7 @@
 		"vscode": "^1.47.0"
 	},
 	"categories": [
-		"Other"
+		"Snippets"
 	],
 	"activationEvents": [
 		"onCommand:react-snippet-generator.generateComponentSnippets"
