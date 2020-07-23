@@ -154,7 +154,7 @@ const HELPERS = {
 
       resolve({
         message: writeResult ? GENERATE_ERROR_MESSAGE : GENERATE_SUCCESS_MESSAGE,
-        error: writeResult,
+        error: writeResult || false,
       });
     });
   },

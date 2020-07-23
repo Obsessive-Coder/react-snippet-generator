@@ -16,7 +16,7 @@ const NO_COMPONENTS_ERROR_MESSAGE: string = 'React Snippet Generator: No compone
 const CANCELLED_SNIPPET_GENERATION: string = 'The snippet generator was cancelled.';
 
 // Collections.
-const SNIPPET_TYPES: Array<string> = ['empty', 'required', 'props'];
+const SNIPPET_TYPES: Array<string> = ['Empty Snippets', 'Required Props Only', 'Props (All)'];
 const DEFAULT_OPEN_OPTIONS: OpenDialogOptions = {
   canSelectFiles: false,
   canSelectFolders: true,

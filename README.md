@@ -1,6 +1,6 @@
-# react-snippet-generator README
+# React Snippet Generator
 
-Select an installed React component library and VS Code snippets will be generated for the components. This project is built using Node, Typescript, and the VS Code Extension API
+Select an installed React component library to generate empty snippets, snippets with required props, and snippets with all props for your React components.
 
 ![Alt Text](./screenCapture.gif)
 
