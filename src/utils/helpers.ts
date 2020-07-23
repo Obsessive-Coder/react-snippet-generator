@@ -97,7 +97,7 @@ const HELPERS = {
         // Get a list of props for this component based on the type of snippet.
         const propNames: Array<string> = snippetType === 'empty' ? [] : (
           Object.keys(props).filter((name: string): boolean => (
-            snippetType === 'required' && props[name].required
+            snippetType === 'required' ? props[name].required : true
           ))
         );
 
