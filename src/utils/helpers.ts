@@ -12,8 +12,6 @@ const reactDocs = require('react-docgen');
 import {
   COMPONENT_NAME_REGEX,
   FILE_PATH_REGEX,
-  REACT_IMPORT_REGEX,
-  PROPTYPES_IMPORT_REGEX,
   GENERATE_SUCCESS_MESSAGE,
   GENERATE_ERROR_MESSAGE,
 } from './constants';
@@ -35,16 +33,18 @@ const HELPERS = {
     const directoryItems: Array<IDirectoryItem> = await
       fs.readdir(formattedPath, { withFileTypes: true });
 
-    // Separate directories and files.
+    // Store the directories.
     const directories: Array<IDirectoryItem> = directoryItems.filter(
       (item: IDirectoryItem): boolean => item.isDirectory());
 
+    // Store the files.
     const files: Array<string> = directoryItems.filter(
       (item: IDirectoryItem): boolean => (
         !item.isDirectory() && isFilenameComponent(item.name))
       ).map(({ name }: IDirectoryItem): string => `${formattedPath}/${name}`);
 
-    // Recursively call this function and add the files to the files array.
+    // Recursively call this function for the directories,
+    // and add the files to the files array.
     for (let directory of directories) {
       files.push(...await HELPERS.getComponentFileNames(
         `${directoryPath}/${directory.name}`));
@@ -138,7 +138,6 @@ const HELPERS = {
   writeSnippetsFile: async (
     snippetsData: ISnippetFile, projectPath: string, libraryName: string
   ): Promise<IPromiseData> => {
-    // TODO: Return a promise from here so a message can be shown to the user.
     // Writes a VS Code snippets file to the user's project directory.
     return new Promise(async resolve => {
       // Save path: "project-directory/.vscode/filename.code-snippets".
@@ -171,16 +170,6 @@ function isFilenameComponent(filePath: string): boolean {
   const splitPath: string[] = filePath.split('\\');
   const filename: string = splitPath[splitPath.length - 1];
   return COMPONENT_NAME_REGEX.test(filename);
-}
-
-function isFileContentComponent(fileContent: string): boolean {
-  // TODO: Apply more accurate regex patterns.
-  // TODO: Consider removing since invalid files are ignored.
-  // Determines if a file is a React component.
-  const isReactImported: boolean = REACT_IMPORT_REGEX.test(fileContent);
-  const isPropTypesImported: boolean = PROPTYPES_IMPORT_REGEX.test(fileContent);
-
-  return isReactImported && isPropTypesImported;
 }
 
 export default HELPERS;

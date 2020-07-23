@@ -9,7 +9,7 @@ const {
 	DEFAULT_OPEN_OPTIONS, DEFAULT_PROGRESS_REPORT,
 	TOO_MANY_FILES_ERROR_MESSAGE, NO_COMPONENTS_ERROR_MESSAGE,
 	CANCELLED_SNIPPET_GENERATION, PROGRESS_OPTIONS_DATA,
-	SNIPPET_TYPES,
+	SNIPPET_TYPES, DEFAULT_PICKER_OPTIONS,
 } = CONSTANTS;
 
 const {
@@ -31,32 +31,32 @@ export function activate(context: vscode.ExtensionContext) {
 			*/
 
 			let componentLibraryName: string;
-			// Store the number of components found.
 			let componentTotal: number = 0;
 			let snippetTypes: string[] = [];
 
+			// Show in input to capture the library name.
 			vscode.window.showInputBox()
 				.then((libraryName: string|undefined) => {
 					if (!libraryName) { return; }
 
 					componentLibraryName = libraryName;
 
-					return vscode.window.showQuickPick(SNIPPET_TYPES, {
-						canPickMany: true,
-						ignoreFocusOut: true,
-					});
-					// return vscode.window.showOpenDialog(DEFAULT_OPEN_OPTIONS);
+					// Show a list of snippet types for the user to choose.
+					return <Thenable<vscode.QuickPickItem[]|undefined>> vscode.window.showQuickPick(SNIPPET_TYPES, DEFAULT_PICKER_OPTIONS);
 				})
-				.then((selectedSnippetTypes: string[]|undefined = []) => {
-					snippetTypes = selectedSnippetTypes.map((sType: string) => (
-						sType.split(' ')[0].toLowerCase()
-					));
+				.then((selectedSnippetTypes: vscode.QuickPickItem[]|undefined = []) => {
+					// Store the types of snippets to generate.
+					snippetTypes = selectedSnippetTypes.map(
+						({ label }: vscode.QuickPickItem) => label);
+
+					// Show a dialog for the user to choose a component library.
 					return vscode.window.showOpenDialog(DEFAULT_OPEN_OPTIONS);
 				})
 				.then((selectedFolderPaths: vscode.Uri[] | undefined) => {
 					// Return if no folder is selected or it's an empty array.
 					if (!selectedFolderPaths || !selectedFolderPaths.length) { return; }
 
+					// Show progress status to the user.
 					return vscode.window.withProgress(
 						PROGRESS_OPTIONS_DATA, (progress, token) => {
 							// Start the progress.

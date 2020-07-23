@@ -1,11 +1,12 @@
-import { OpenDialogOptions, ProgressLocation, ProgressOptions } from 'vscode';
+import {
+  OpenDialogOptions, ProgressLocation, ProgressOptions,
+  QuickPickOptions, QuickPickItem
+} from 'vscode';
 import { IProgressReport } from './interfaces';
 
 // Regular Expressions.
 const COMPONENT_NAME_REGEX: RegExp = /^[A-Z].*\.(jsx|tsx|js|ts)$/;
 const FILE_PATH_REGEX: RegExp = /[/\\]/;
-const REACT_IMPORT_REGEX: RegExp = /import\s*\w*\s*from\s*["\']react["\']/;
-const PROPTYPES_IMPORT_REGEX: RegExp = /import\s*\w*\s*from\s*["\']prop-types["\']/;
 
 // Messages.
 const GENERAL_ERROR_MESSAGE: string = 'ERROR: An error occurred while attempting to';
@@ -16,7 +17,20 @@ const NO_COMPONENTS_ERROR_MESSAGE: string = 'React Snippet Generator: No compone
 const CANCELLED_SNIPPET_GENERATION: string = 'The snippet generator was cancelled.';
 
 // Collections.
-const SNIPPET_TYPES: Array<string> = ['Empty Snippets', 'Required Props Only', 'Props (All)'];
+const SNIPPET_TYPES: Array<QuickPickItem> = [{
+  label: 'Empty',
+  description: 'Generate empty snippets only.',
+  picked: true,
+}, {
+  label: 'Required',
+  description: 'Generate snippets with required props.',
+  picked: true,
+}, {
+  label: 'Props',
+  description: 'Generate snippets with all props.',
+  picked: true,
+}];
+
 const DEFAULT_OPEN_OPTIONS: OpenDialogOptions = {
   canSelectFiles: false,
   canSelectFolders: true,
@@ -31,12 +45,14 @@ const DEFAULT_PROGRESS_REPORT: IProgressReport = {
   increment: 25,
   message: 'Getting Files',
 };
+const DEFAULT_PICKER_OPTIONS: QuickPickOptions = {
+  canPickMany: true,
+  ignoreFocusOut: true,
+};
 
 export {
   COMPONENT_NAME_REGEX,
   FILE_PATH_REGEX,
-  REACT_IMPORT_REGEX,
-  PROPTYPES_IMPORT_REGEX,
   GENERATE_SUCCESS_MESSAGE,
   GENERATE_ERROR_MESSAGE,
   TOO_MANY_FILES_ERROR_MESSAGE,
@@ -46,6 +62,7 @@ export {
   DEFAULT_OPEN_OPTIONS,
   PROGRESS_OPTIONS_DATA,
   DEFAULT_PROGRESS_REPORT,
+  DEFAULT_PICKER_OPTIONS,
 };
 
 export default {
@@ -62,4 +79,5 @@ export default {
   DEFAULT_OPEN_OPTIONS,
   PROGRESS_OPTIONS_DATA,
   DEFAULT_PROGRESS_REPORT,
+  DEFAULT_PICKER_OPTIONS,
 };
