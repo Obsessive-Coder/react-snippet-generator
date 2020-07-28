@@ -118,9 +118,10 @@ export function activate(context: vscode.ExtensionContext) {
 									...DEFAULT_PROGRESS_REPORT,
 									message: 'Creating Snippets',
 								});
+								console.log(snippetTypes);
 								const snippetsData: ISnippetFile = snippetTypes.reduce((acc, current) => ({
 									...acc,
-									...getSnippets(componentsData, current)
+									...getSnippets(componentsData, current.toLowerCase())
 								}), {});
 
 								// Stop if the user cancelled.
