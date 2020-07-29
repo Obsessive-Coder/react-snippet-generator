@@ -45,6 +45,8 @@ export function activate(context: vscode.ExtensionContext) {
 					return <Thenable<vscode.QuickPickItem[]|undefined>> vscode.window.showQuickPick(SNIPPET_TYPES, DEFAULT_PICKER_OPTIONS);
 				})
 				.then((selectedSnippetTypes: vscode.QuickPickItem[]|undefined = []) => {
+					if (!selectedSnippetTypes || !selectedSnippetTypes.length) { return; }
+
 					// Store the types of snippets to generate.
 					snippetTypes = selectedSnippetTypes.map(
 						({ label }: vscode.QuickPickItem) => label);
@@ -146,7 +148,8 @@ export function activate(context: vscode.ExtensionContext) {
 						}
 					);
 				})
-				.then((result: any) => {
+				.then((result: any = { error: true, message: CANCELLED_SNIPPET_GENERATION }) => {
+					console.log('DATA: ', result);
 					// Show an error or info message based on the result.
 					const { error = false, message } = result;
 					const { showInformationMessage, showErrorMessage} = vscode.window;
