@@ -1,20 +1,21 @@
 {
 	"name": "react-snippet-generator",
+	"version": "0.0.11",
 	"publisher": "ObsessiveCoder",
+	"author": "Jared Huffstutler",
 	"displayName": "React Snippet Generator",
 	"description": "Select an installed React component library and VS Code snippets will be generated.",
-	"version": "0.0.9",
 	"icon": "reactIcon.png",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/Obsessive-Coder/react-snippet-generator"
 	},
-	"engines": {
-		"vscode": "^1.47.0"
-	},
 	"categories": [
 		"Snippets"
 	],
+	"engines": {
+		"vscode": "^1.47.0"
+	},
 	"activationEvents": [
 		"onCommand:react-snippet-generator.generateComponentSnippets"
 	],
