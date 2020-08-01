@@ -2,6 +2,10 @@
 
 Select an installed React component library to generate empty snippets, snippets with required props, and snippets with all props for your React components.
 
+Check out my other extension which shows a list of your components on the sidebar, and allows you to add them to your code with a single click.
+
+[React Component Explorer](https://marketplace.visualstudio.com/items?itemName=ObsessiveCoder.react-component-explorer)
+
 # Usage
 
 1. Use `ctrl + shift + P` and select the command `React Snippet Generator: Generate Component Snippets`.
@@ -11,6 +15,6 @@ Select an installed React component library to generate empty snippets, snippets
 
 ![Alt Text](./screenCapture.gif)
 
-## Known Issues
+# Known Issues
 
 Attempting to read too many files will cause the generator to be cancelled.
