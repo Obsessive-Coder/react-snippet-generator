@@ -1,6 +1,6 @@
 # React Snippet Generator
 
-Select an installed React component library to generate empty snippets, snippets with required props, and snippets with all props for your React components.
+Select an installed React component library to generate up to 3 types of VS Code snippets.
 
 Check out my other extension which shows a list of your components on the sidebar, and allows you to add them to your code with a single click.
 
@@ -14,6 +14,12 @@ Check out my other extension which shows a list of your components on the sideba
 4. Select the folder where the component library is installed.
 
 ![Alt Text](./screenCapture.gif)
+
+# Coming Soon
+
+* Unit tests
+* Change Log
+* Right click a folder for a context option to generate snippets for components found in that folder.
 
 # Known Issues
 
